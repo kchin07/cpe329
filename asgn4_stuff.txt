@@ -1,0 +1,26 @@
+if (col != 0x07){
+	int i;
+	for (i = 0; i < 4; i++){
+        P4->DIR &= 0x78; /* disable all rows */
+        P4->DIR |= 0x08 << i; /* enable one row at a time */
+        P4->OUT &= ~(0x08 << i); /* drive the active row low */
+        delay_ms(1, FREQ_3MHz); /* wait for signal to settle */
+        col = P4->IN & 0x07; /* read all columns */
+        P4->OUT |= 0x08 << i; /* drive the active row high */
+        if (col != 0xF0) break; /* if one of the input is low, some key is pressed. */
+	}
+	P4->OUT |= 0x78
+
+        if(col == 0x70){
+                P2->OUT |= BIT0;
+        }
+        else if (col == 0x68){
+                P2->OUT |= BIT1;
+        }
+        else if (col == 0x58){
+                P2->OUT |= BIT2;
+        }
+        else if (col == 0x48){
+                P2->OUT |= BIT0|BIT1|BIT2;
+        }
+}
