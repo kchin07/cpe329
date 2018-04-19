@@ -9,6 +9,7 @@ CMD_SRCS += \
 C_SRCS += \
 ../LCD.c \
 ../delay.c \
+../keypad.c \
 ../main.c \
 ../startup_msp432p401r_ccs.c \
 ../system_msp432p401r.c 
@@ -16,6 +17,7 @@ C_SRCS += \
 C_DEPS += \
 ./LCD.d \
 ./delay.d \
+./keypad.d \
 ./main.d \
 ./startup_msp432p401r_ccs.d \
 ./system_msp432p401r.d 
@@ -23,6 +25,7 @@ C_DEPS += \
 OBJS += \
 ./LCD.obj \
 ./delay.obj \
+./keypad.obj \
 ./main.obj \
 ./startup_msp432p401r_ccs.obj \
 ./system_msp432p401r.obj 
@@ -30,6 +33,7 @@ OBJS += \
 OBJS__QUOTED += \
 "LCD.obj" \
 "delay.obj" \
+"keypad.obj" \
 "main.obj" \
 "startup_msp432p401r_ccs.obj" \
 "system_msp432p401r.obj" 
@@ -37,6 +41,7 @@ OBJS__QUOTED += \
 C_DEPS__QUOTED += \
 "LCD.d" \
 "delay.d" \
+"keypad.d" \
 "main.d" \
 "startup_msp432p401r_ccs.d" \
 "system_msp432p401r.d" 
@@ -44,6 +49,7 @@ C_DEPS__QUOTED += \
 C_SRCS__QUOTED += \
 "../LCD.c" \
 "../delay.c" \
+"../keypad.c" \
 "../main.c" \
 "../startup_msp432p401r_ccs.c" \
 "../system_msp432p401r.c" 
