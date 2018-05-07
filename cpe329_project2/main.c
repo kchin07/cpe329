@@ -10,13 +10,13 @@
 #define myCS BIT0
 #define VOLTAGE 2048 // voltage for half the maximum
 
-uint16_t count; // variable for spot in lookup table
-uint16_t* table; // variable for lookup table
-char mode;// 0 - square, 1 - sin, 2 - sawtooth
-int intervals; // variable for number of discrete values in shape
-int dutyCycle; // duty ycle
-char pinId;
-const int cycles[5] = {500,250,167,125,100}; // variable for number of intervals for a frequency
+volatile uint16_t count; // variable for spot in lookup table
+volatile uint16_t* table; // variable for lookup table
+volatile char mode;// 0 - square, 1 - sin, 2 - sawtooth
+volatile int intervals; // variable for number of discrete values in shape
+volatile int dutyCycle; // duty cycle
+volatile char lock;
+volatile char pinId;
 
 void initSquareLookup() {
     table = malloc(sizeof(uint16_t) * intervals);
@@ -33,10 +33,10 @@ void initSquareLookup() {
 
 void initSinLookup() {
     table = malloc(sizeof(uint16_t) * intervals);
-    intervals /= 2;
+    int temp = intervals / 2;
     float i;
     int counter = 0;
-    for (i = 0; i < 2 * M_PI; i += M_PI / intervals) {
+    for (i = 0; i < 2 * M_PI; i += M_PI / temp) {
         table[counter++] = (int)((VOLTAGE / 2) * (sin(i)+1));
     }
 }
@@ -50,6 +50,7 @@ void initSawtoothLookup() {
 }
 
 void changeWaveform() {
+    free(table);
     if (mode == 0) {
         initSquareLookup();
     }
@@ -64,8 +65,9 @@ void changeWaveform() {
 void initSystem() {
     count = 0; // start of lookup
     mode = 0; // square mode
-    intervals = cycles[0]; // 100 Hz frequency
+    intervals = 500; // 100 Hz frequency
     dutyCycle = 50; // 50% duty cycle
+    lock = 0;
     initSquareLookup();
 }
 
@@ -77,7 +79,6 @@ void main(void) {
     P4->DIR = 0x78;//MAKE P4.3-P4.6 outputs, rest are inputs
     P4->REN = 0x07;//make P4.0-P4.2 resistors enabled
     P4->OUT = 0x07;//make P4.0-P4.2 resistors set as pull-up
-
 
     P1->SEL0 |= BIT5|BIT6|BIT7; //eUSCI_B_SPI
     P6->DIR |= myCS;
@@ -92,12 +93,7 @@ void main(void) {
     CS->CTL0 = CS_CTL0_DCORSEL_4;//24 MHz
     CS->KEY = 0;
 
-    TIMER_A0->CCTL[0] = TIMER_A_CCTLN_CCIE; //TACCR0 interrupt enabled
-    TIMER_A0->CCR[0] = 480;
-    TIMER_A0->CTL = TIMER_A_CTL_SSEL__SMCLK | //SMCLK, up mode
-        TIMER_A_CTL_MC__UP;
-
-    //SCB->SCR |= SCB_SCR_SLEEPONEXIT_Msk; Enable sleep on exit from ISR
+    //SCB->SCR |= SCB_SCR_SLEEPONEXIT_Msk; //Enable sleep on exit from ISR
 
     P1->SEL0 |= BIT5;
     P1->SEL1 &= ~BIT5;
@@ -107,70 +103,86 @@ void main(void) {
     P6->DIR |= myCS;
     P6->OUT |= myCS;
 
+    P2->DIR |= BIT2|BIT1|BIT0;
+
+    TIMER_A0->CCTL[0] = TIMER_A_CCTLN_CCIE; //TACCR0 interrupt enabled
+    TIMER_A0->CCR[0] = 480;
+    TIMER_A0->CTL = TIMER_A_CTL_SSEL__SMCLK | //SMCLK, up mode
+        TIMER_A_CTL_MC__UP;
+
     __enable_irq();
 
     NVIC->ISER[0] = 1 << ((TA0_0_IRQn) & 31);
 
     while (1)
     {
+        //__disable_irq();
         pinId = get_pin();
+        if (pinId == 0) {
+            lock = 0;
+        }
         displayAndLight(pinId);
+        //__enable_irq();
         //__sleep();
-        //__no_operation(); For debugger
+        //__no_operation(); //For debugger
     }
 }
 
 void TA0_0_IRQHandler(void) {
     uint16_t data;
     uint8_t hiByte, loByte;
-    TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIFG;
 
     if(pinId == 1){ //change to 100 Hz
-        intervals = cycles[0];
-        initSquareLookup();
+        intervals = 500;
+        changeWaveform();
         count = 0;
     }
     else if(pinId == 2){ //change to 200 Hz
-        intervals = cycles[1];
-        initSquareLookup();
+        intervals = 250;
+        changeWaveform();
         count = 0;
     }
     else if(pinId == 3){ //change to 300 Hz
-        intervals = cycles[2];
-        initSquareLookup();
+        intervals = 167;
+        changeWaveform();
         count = 0;
     }
     else if(pinId == 4){ //change to 400 Hz
-        intervals = cycles[3];
-        initSquareLookup();
+        intervals = 125;
+        changeWaveform();
         count = 0;
     }
     else if(pinId == 5){ //change to 500 Hz
-        intervals = cycles[4];
-        initSquareLookup();
+        intervals = 100;
+        changeWaveform();
         count = 0;
     }
     else if(pinId == 7){//square
         mode = 0;
+        free(table);
         initSquareLookup();
         count = 0;
     }
     else if(pinId == 8){//sine
         mode = 1;
+        free(table);
         initSinLookup();
         count = 0;
     }
     else if(pinId == 9){//sawtooth
         mode = 2;
+        free(table);
         initSawtoothLookup();
         count = 0;
     }
     else if(pinId == 10){//decrease
-        if (dutyCycle > 10) {
+        if (dutyCycle > 10 && lock == 0) {
             dutyCycle -= 10;
+            lock = 1;
         }
         changeWaveform();
         count = 0;
+        delay_ms(500,FREQ_24MHz);// debounce effect
     }
     else if(pinId == 11){//reset to 50%
         dutyCycle = 50;
@@ -178,10 +190,12 @@ void TA0_0_IRQHandler(void) {
         count = 0;
     }
     else if(pinId == 12){//increase
-        if (dutyCycle < 90) {
+        if (dutyCycle < 90 && lock == 0) {
             dutyCycle += 10;
+            lock = 1;
         }
         changeWaveform();
+        delay_ms(500,FREQ_24MHz); // debounce effect
         count = 0;
     }
 
@@ -204,4 +218,6 @@ void TA0_0_IRQHandler(void) {
     while(!(EUSCI_B0->IFG & EUSCI_B_IFG_TXIFG));
 
     P6->OUT |= myCS;
+    TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIFG;
+
 }
