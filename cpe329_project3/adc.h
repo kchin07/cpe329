@@ -2,7 +2,7 @@
 #define ADC_H_
 
 #include "msp.h"
-#define NUMPOINTS 400
+#define NUMPOINTS 15000
 
 void write_to_terminal(char byte);
 void write_voltage(double voltage);

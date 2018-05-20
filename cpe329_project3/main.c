@@ -4,33 +4,95 @@
 #include <math.h>
 #include <stdlib.h>
 
-uint32_t dataTable[NUMPOINTS];
-uint32_t newData[NUMPOINTS];
+#define STATE0 0
+#define STATE1 1
+
+uint16_t dataTable[NUMPOINTS];
+char newData[NUMPOINTS];
+char state = STATE0; // start at STATE0
 uint32_t count = 0;
 uint8_t ready = 0;
-uint8_t flag = 0;
-uint32_t windowSize = 10;
+uint32_t windowSize = 5;
 
-uint32_t findMinIndex() {
+double true_rms(int32_t interval){
+    int i = 0;
+    double sum = 0;
+    uint32_t temp;
+    for(i = 10; i <= interval+10; i++){
+        temp = dataTable[i];
+//        print_int32(temp);
+//        write_to_terminal(' ');
+        sum += temp*temp;
+    }
+    sum = sum/(interval);
+    sum = sqrt(sum);
+
+    return sum;
+}
+
+uint32_t convert_to_freq(int32_t interval){
+    double inverseInterval = 1.0/interval;
+    uint32_t frequency;
+    if(state == STATE1){
+        frequency = (7551.7 * inverseInterval) + 0.0019;
+    }
+    else{
+        frequency = (197988 *inverseInterval) + 0.0624;
+    }
+    return frequency;
+}
+
+uint32_t findFallingEdgeIndex(uint32_t start) {
     uint32_t i;
-    for (i = 1; i < NUMPOINTS - 1 - (windowSize-1); i++) {
-        if ((newData[i] <= newData[i-1] && newData[i] < newData[i+1]) ||
-            (newData[i] < newData[i-1] && newData[i] <= newData[i+1])) {
+    for (i = start; i < NUMPOINTS-1; i++) {
+        if (newData[i] == 1 && newData[i+1] == 0) {
             return i;
         }
     }
     return 0;
 }
 
-uint32_t findMaxIndex(uint32_t start) {
+uint32_t findRisingEdgeIndex(uint32_t start) {
     uint32_t i;
-    for (i = start; i < NUMPOINTS - 1 - (windowSize-1); i++) {
-        if ((newData[i] >= newData[i-1] && newData[i] > newData[i+1]) ||
-            (newData[i] > newData[i-1] && newData[i] >= newData[i+1])) {
+    for (i = start; i < NUMPOINTS-1; i++) {
+        if (newData[i] == 0 && newData[i+1] == 1) {
             return i;
         }
     }
     return 0;
+}
+
+void filter() {
+    uint32_t i;
+    for (i = 0; i < NUMPOINTS - windowSize + 1; i++) {
+        dataTable[i] = (dataTable[i]
+                      +dataTable[i+1]
+                      +dataTable[i+2]
+                      +dataTable[i+3]
+                      +dataTable[i+4]) / windowSize;
+    }
+}
+
+uint32_t findMin() {
+    uint32_t i;
+    uint32_t minIndex = 0;
+    for (i = 1; i < NUMPOINTS; i++) {
+        if (dataTable[minIndex] > dataTable[i]) {
+            minIndex = i;
+        }
+    }
+    return dataTable[minIndex];
+}
+
+uint32_t findMax() {
+    uint32_t i;
+    uint32_t maxIndex = 0;
+    for (i = 1; i < NUMPOINTS; i++) {
+        if (dataTable[maxIndex] < dataTable[i]) {
+            maxIndex = i;
+        }
+    }
+    return dataTable[maxIndex];
 }
 
 void uart_init() {
@@ -75,7 +137,7 @@ int main(void) {
     // Enable ADC conv complete interrupt
 
     TIMER_A0->CCTL[0] = TIMER_A_CCTLN_CCIE; //TACCR0 interrupt enabled
-    TIMER_A0->CCR[0] = 60;
+    TIMER_A0->CCR[0] = 60; // 60, 3200
     TIMER_A0->CTL = TIMER_A_CTL_SSEL__SMCLK | //SMCLK, up mode
         TIMER_A_CTL_MC__UP;
 
@@ -89,40 +151,52 @@ int main(void) {
     ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
     //clear_screen();
     //set_cursor(1,1);
-    uint32_t minIndex, maxIndex;
+    uint32_t fall1, fall2;
+    uint16_t min, max, mid;
+    int32_t interval;
     uint8_t cont = 1;
     uint32_t a;
+    uint32_t frequency;
     while (1) {
         if (ready == 1 && cont == 1) {
             __disable_irq();
+            filter();
+            min = findMin();
+            max = findMax();
+            mid = (min + max) / 2;
 
-            //movingAverage
-            for (a = 0; a < NUMPOINTS-(windowSize-1); a++) {
-                newData[a] = (dataTable[a]
-                             +dataTable[a+1]
-                             +dataTable[a+2]
-                             +dataTable[a+3]
-                             +dataTable[a+4]) / windowSize;
+            for (i = 0; i < NUMPOINTS; i++) {
+                if ((int32_t)dataTable[i] - (int32_t)mid >= 0) {
+                    newData[i] = 1;
+                }
+                else {
+                    newData[i] = 0;
+                }
             }
 
-            for (i = 0; i < NUMPOINTS - windowSize + 1; i++) {
-                print_int32(i);
-                write_to_terminal(':');
-                write_to_terminal(' ');
-                write_to_terminal('[');
-                print_int32(newData[i]);
-                write_to_terminal(']');
-                write_to_terminal('.');
-                write_to_terminal(' ');
-                write_to_terminal(' ');
+            fall1 = findFallingEdgeIndex(1);
+            fall2 = findFallingEdgeIndex(fall1+10);
+
+            interval = abs((int32_t)fall1 - (int32_t)fall2);
+            if ((interval > 5000 && state == STATE0) || interval < 150) { // SWITCH TO STATE1
+                state = STATE1;
+                TIMER_A0->CCR[0] = 3200;
+                TIMER_A0->R = 0;
+                ready = 0;
+                count = 0;
             }
-            minIndex = findMinIndex();
-            maxIndex = findMaxIndex(minIndex+5);
-            print_int32(minIndex);
-            write_to_terminal(' ');
-            print_int32(maxIndex);
-            write_to_terminal(' ');
-            cont = 0;
+            else { // WE GOOD
+                frequency = convert_to_freq(interval);
+                clear_screen();
+                print_int32(frequency);
+                print_string("Hz");
+                state = STATE0;
+                TIMER_A0->CCR[0] = 60;
+                TIMER_A0->R = 0;
+                ready = 0;
+                count = 0;
+            }
+            __enable_irq();
         }
     }
     return 1;

@@ -43,6 +43,13 @@ void clear_screen() {
   write_to_terminal('H');
 }
 
+void print_string(char* s) {
+  while (*s != 0) {
+    write_to_terminal((uint8_t)*s);
+    s++;
+  }
+}
+
 void print_int32(uint32_t i) {
   uint32_t highestPowerOf10 = 1000000000;
 
