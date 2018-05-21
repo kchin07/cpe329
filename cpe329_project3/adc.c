@@ -7,7 +7,7 @@ void write_to_terminal(char byte) {
     EUSCI_A0->TXBUF = EUSCI_A0->RXBUF;
 }
 
-void write_voltage(double voltage) {
+void print_voltage(double voltage) {
     voltage *= 10000;
     int newVoltage = (int)voltage;
     unsigned char output[6];
@@ -35,5 +35,5 @@ void write_voltage(double voltage) {
 }
 
 double adc_get_voltage(uint32_t num) {
-    return (num * 3.3) / 1023;
+    return (num * 3.3) / 16384;
 }

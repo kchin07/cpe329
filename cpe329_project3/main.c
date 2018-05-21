@@ -14,17 +14,13 @@ uint32_t count = 0;
 uint8_t ready = 0;
 uint32_t windowSize = 5;
 
-double true_rms(int32_t interval){
+uint32_t true_rms(uint32_t fall1, uint32_t fall2){
     int i = 0;
-    double sum = 0;
-    uint32_t temp;
-    for(i = 10; i <= interval+10; i++){
-        temp = dataTable[i];
-//        print_int32(temp);
-//        write_to_terminal(' ');
-        sum += temp*temp;
+    uint32_t sum = 0;
+    for(i = fall1; i < fall2; i++){
+        sum += dataTable[i] * dataTable[i];
     }
-    sum = sum/(interval);
+    sum /= abs((int32_t)fall1 - (int32_t) fall2);
     sum = sqrt(sum);
 
     return sum;
@@ -40,6 +36,15 @@ uint32_t convert_to_freq(int32_t interval){
         frequency = (197988 *inverseInterval) + 0.0624;
     }
     return frequency;
+}
+
+uint32_t convert_to_dc() {
+    uint32_t i;
+    uint32_t temp = 0;
+    for (i = 0; i < 400; i++) {
+        temp += dataTable[i];
+    }
+    return temp / 400;
 }
 
 uint32_t findFallingEdgeIndex(uint32_t start) {
@@ -152,11 +157,13 @@ int main(void) {
     //clear_screen();
     //set_cursor(1,1);
     uint32_t fall1, fall2;
+    uint32_t dcValue;
     uint16_t min, max, mid;
     int32_t interval;
     uint8_t cont = 1;
     uint32_t a;
     uint32_t frequency;
+    uint8_t row;
     while (1) {
         if (ready == 1 && cont == 1) {
             __disable_irq();
@@ -188,8 +195,44 @@ int main(void) {
             else { // WE GOOD
                 frequency = convert_to_freq(interval);
                 clear_screen();
+                row = 1;
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("DC setting:");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("  DC reading: ");
+                print_voltage(adc_get_voltage(convert_to_dc()));
+                write_to_terminal('V');
+
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("AC setting:");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("  true-RMS: ");
+                print_voltage(adc_get_voltage(true_rms(fall1,fall2)));
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("  DC offset: ");
+                print_voltage(adc_get_voltage(mid));
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("  peak-to-peak: ");
+                print_voltage(adc_get_voltage(max-min));
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("frequency: ");
                 print_int32(frequency);
                 print_string("Hz");
+
                 state = STATE0;
                 TIMER_A0->CCR[0] = 60;
                 TIMER_A0->R = 0;

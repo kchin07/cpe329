@@ -69,4 +69,12 @@ void print_int32(uint32_t i) {
   }
 }
 
+void erase_line() {
+  write_to_terminal(27);
+  write_to_terminal('[');
+  write_to_terminal('2');
+  write_to_terminal('K');
+}
+
+
 

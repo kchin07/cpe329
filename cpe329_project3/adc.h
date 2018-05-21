@@ -5,7 +5,7 @@
 #define NUMPOINTS 15000
 
 void write_to_terminal(char byte);
-void write_voltage(double voltage);
+void print_voltage(double voltage);
 double adc_get_voltage(uint32_t num);
 
 #endif
