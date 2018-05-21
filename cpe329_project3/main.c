@@ -3,7 +3,7 @@
 #include "vtFuncs.h"
 #include <math.h>
 #include <stdlib.h>
-
+#include "delay.h"
 #define STATE0 0
 #define STATE1 1
 
@@ -197,6 +197,8 @@ int main(void) {
                 clear_screen();
                 row = 1;
 
+                double trueRMS = adc_get_voltage(true_rms(fall1,fall2));
+                double DCVoltage = adc_get_voltage(convert_to_dc());
                 set_cursor(row++,1);
                 erase_line();
                 print_string("DC setting:");
@@ -204,7 +206,7 @@ int main(void) {
                 set_cursor(row++,1);
                 erase_line();
                 print_string("  DC reading: ");
-                print_voltage(adc_get_voltage(convert_to_dc()));
+                print_voltage(DCVoltage);
                 write_to_terminal('V');
 
 
@@ -215,7 +217,7 @@ int main(void) {
                 set_cursor(row++,1);
                 erase_line();
                 print_string("  true-RMS: ");
-                print_voltage(adc_get_voltage(true_rms(fall1,fall2)));
+                print_voltage(trueRMS);
 
                 set_cursor(row++,1);
                 erase_line();
@@ -232,6 +234,48 @@ int main(void) {
                 print_string("frequency: ");
                 print_int32(frequency);
                 print_string("Hz");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("True-RMS:");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("0.0V    1.0V      2.0V      3.0V      4.0V");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("|        |         |         |         |");
+
+                set_cursor(row++,1);
+                erase_line();
+                int graphPoints;
+                graphPoints = trueRMS * 10.0;
+
+                int x;
+                for(x = 0; x < graphPoints; x++){
+                    print_string("-");
+                }
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("DC Voltage");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("0.0V    1.0V      2.0V      3.0V      4.0V");
+
+                set_cursor(row++,1);
+                erase_line();
+                print_string("|        |         |         |         |");
+
+                set_cursor(row++,1);
+                erase_line();
+                graphPoints = DCVoltage * 10.0;
+
+                for(x = 0; x < graphPoints; x++){
+                    print_string("-");
+                }
 
                 state = STATE0;
                 TIMER_A0->CCR[0] = 60;
