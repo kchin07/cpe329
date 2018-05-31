@@ -42,29 +42,16 @@ void main(void){
 	TIMER_A0->CTL = TIMER_A_CTL_SSEL__SMCLK | // SMCLK, up mode
             TIMER_A_CTL_MC__UP;
 	TIMER_A0->CCR[0] = 18000; // want a 24ms period, so 24ms/(1/(0.75*10^6)) = 18000
+
     TIMER_A0->CCR[1] = MAXRIGHT; //duty cycle, start right
-    TIMER_A0->CCR[2] = SERVOCENTER; //duty cycle, start left
+    TIMER_A0->CCR[2] = SERVOCENTER; //duty cycle, start center
     TIMER_A0->CCR[3] = MAXLEFT; //duty cycle, start left
 
-    delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
+    delay_ms(1450, FREQ_1P5MHz);
 
-    TIMER_A0->CCR[2] = SERVOCENTER + FOURTYDEGREES; //duty cycle, start left
+    TIMER_A0->CCR[2] = SERVOCENTER + FOURTYDEGREES; //activate gun motor
 
-    delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
-
-
-//    int dartCount = 0;
-//    while(dartCount < 4){
-//        TIMER_A0->CCR[1] = MAXLEFT; //duty cycle, start left
-//
-//        delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
-//
-//        TIMER_A0->CCR[1] = MAXRIGHT; //duty cycle, start left
-//
-//        delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
-//
-//        dartCount++;
-//    }
+    delay_ms(1450, FREQ_1P5MHz);//wait for servo to rotate
 
     int count = 0;
     char direction = 0; //0 = left, 1 = right
@@ -72,30 +59,34 @@ void main(void){
 
     int cycles = 0;
     int iterations = 0;
+
 	while(iterations != 1){
+
 	    //switch direction
 	    if(count == DEGREES180){
 	        count = 0;
 	        direction ^= 1;
 	        cycles++;
 	    }
+
 	    //date firing
 	    if (cycles == 3){
             int dartCount = 0;
             while(dartCount < 4){
-                TIMER_A0->CCR[1] = MAXLEFT; //duty cycle, start left
+                TIMER_A0->CCR[1] = MAXLEFT; //pull trigger
 
-                delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
+                delay_ms(1450, FREQ_1P5MHz);//wait for servo to rotate
 
-                TIMER_A0->CCR[1] = MAXRIGHT; //duty cycle, start left
+                TIMER_A0->CCR[1] = MAXRIGHT; //release trigger
 
-                delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
+                delay_ms(1450, FREQ_1P5MHz);//wait for servo to rotate
 
                 dartCount++;
             }
             cycles = 0;
             iterations = 1;
 	    }
+
 	    //rotate 180 degrees
 	    else{
 	        if(direction == 0){
@@ -110,7 +101,7 @@ void main(void){
 	    delay_ms(100, FREQ_1P5MHz);//controls how fast the servo rotates
 	}
 
-    TIMER_A0->CCR[2] = SERVOCENTER; //duty cycle, start left
+    TIMER_A0->CCR[2] = SERVOCENTER; //deactivate gun motor
 
-    delay_ms(1450, FREQ_1P5MHz);//controls how fast the servo rotates
+    delay_ms(1450, FREQ_1P5MHz);//wait for servo to rotate
 }
