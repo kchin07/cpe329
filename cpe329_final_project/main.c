@@ -1,11 +1,14 @@
 #include "msp.h"
+#include "delay.h"
+#include "turret.h"
+#include "LCD.h"
 
-#define MAXRIGHT 16000
 #define NUMBER_TIMER_CAPTURES 20
+
+#define ASCII_OFFSET 48
 
 volatile uint16_t timerAcaptureValues[NUMBER_TIMER_CAPTURES] = {0};
 uint16_t timerAcapturePointer = 0;
-
 
 void uart_init() {
     // configure UART pins
@@ -17,8 +20,8 @@ void uart_init() {
     EUSCI_A0->CTLW0 |= EUSCI_A_CTLW0_SWRST|EUSCI_A_CTLW0_SSEL__SMCLK;
     // configure to use SMCLK
 
-    EUSCI_A0->BRW = 13;
-    EUSCI_A0->MCTLW = (73<<EUSCI_A_MCTLW_BRF_OFS) | EUSCI_A_MCTLW_OS16;
+    EUSCI_A0->BRW = 4;
+    EUSCI_A0->MCTLW = (14<<EUSCI_A_MCTLW_BRF_OFS) | EUSCI_A_MCTLW_OS16;
     EUSCI_A0->CTLW0 &= ~(EUSCI_A_CTLW0_SWRST);
 }
 
@@ -149,28 +152,134 @@ uint32_t getDistance() {
     return (highTime - lowTime) / (24 * 58);
 }
 
-void main() {
-	WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;		// stop watchdog timer
+void main(void){
 
-    CS->KEY = CS_KEY_VAL;
-    CS->CTL0 = 0;
-    CS->CTL0 = CS_CTL0_DCORSEL_4;
-    //CS->CTL1 = CS->CTL1 & ~(CS_CTL1_SELM_MASK | CS_CTL1_DIVM_MASK) | CS_CTL1_SELM_3;
-    CS->KEY = 0;
+    char index;
 
-    uart_init();
+    LCD_Keypad_init();
 
-    sensor_init();
+    LCD_ammo_prompt();
 
-    uint32_t distanceCms;
-    while (1) {
-        distanceCms = getDistance();
+    int startGun = 0;
+    int ammoCountNums = 0;
+    char ammoCountString[2];
+    int ammoCountInt = 0;
 
-        set_cursor(1,1);
-        erase_line();
-
-        print_string("centimeters: ");
-        print_int32(distanceCms);
+    while(startGun == 0){
+        index = get_pin();
+        if(index > 0){
+            index = index;
+            if(index == 12){
+                startGun = 1;
+            }
+            else if(ammoCountNums< 2){
+                Write_char_LCD(index + ASCII_OFFSET);
+                delay_ms(200, FREQ_24MHz);
+                ammoCountString[ammoCountNums] = index + ASCII_OFFSET;
+                ammoCountNums++;
+            }
+        }
     }
+
+    Clear_LCD();
+    Home_LCD();
+
+    char* string2 = "ammo count:";
+    Write_string_LCD(string2);
+    Write_string_LCD(ammoCountString);
+
+    int i;
+    for(i = 0; i < 2; i++){
+        if(ammoCountNums == 1){
+            if(i == 0){
+                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET);
+            }
+        }
+        else{
+            if(i == 0){
+                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET)  * 10;
+            }
+            else{
+                ammoCountInt += (ammoCountString[i]- ASCII_OFFSET);
+            }
+        }
+    }
+
+//    ammoCountInt = convert_ammo_string_to_int(ammoCountString, ammoCountNums);
+
+
+
+    while(1){
+        ammoCountInt = ammoCountInt;
+    }
+
+    turret_init();
+    uart_init();
+    sensor_init();
+    uint32_t distanceCms;
+
+    /************************************testing***********************************************/
+
+//    motor_on();
+//
+//    delay_ms(3000, FREQ_24MHz);
+//
+//    motor_off();
+
+    /************************************************************************************/
+
+//    motor_on();
+
+    int count = 0;
+    char direction = 0; //0 = left, 1 = right
+    int start = MAXLEFT;
+
+    int cycles = 0;
+    int iterations = 0;
+
+	while(iterations != 1){
+	    //distance detection
+	     distanceCms = getDistance();
+
+	     set_cursor(1,1);
+	     erase_line();
+
+	     print_string("centimeters: ");
+	     print_int32(distanceCms);
+//
+//	     if(distanceCms < 25){//
+//	         while(distanceCms < 50){
+//
+//	             pull_trigger();
+//
+////	             delay_ms(1000, FREQ_24MHz);//pause
+//
+//	             distanceCms = getDistance();
+//	         }
+//	     }
+//	     else{
+//            //switch direction
+//            if(count == DEGREES180){
+//                count = 0;
+//                direction ^= 1;
+//                cycles++;
+//            }
+//
+//            //rotate 180 degrees
+//            else{
+//                if(direction == 0){
+//                    start -= FIVEDEGREES;
+//                }
+//                else{
+//                    start += FIVEDEGREES;
+//                }
+//                TIMER_A0->CCR[3] = start;
+//            }
+//            count ++;
+//    //	    delay_ms(100, FREQ_24MHz);//controls how fast the servo rotates
+//	     }
+	}
+
+//	motor_off();
 
 }
