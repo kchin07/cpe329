@@ -7,6 +7,8 @@
 
 #define ASCII_OFFSET 48
 
+int ammoCount;
+
 volatile uint16_t timerAcaptureValues[NUMBER_TIMER_CAPTURES] = {0};
 uint16_t timerAcapturePointer = 0;
 
@@ -119,30 +121,24 @@ void set_color(uint8_t color) {
   write_to_terminal('m');
 }
 
-void timer_init() {
-}
-
-//2.7 - trigger, output
-//2.5 - echo, input
-
 void sensor_init() {
-    P4->SEL0 &= ~(BIT1|BIT2);
-    P4->SEL1 &= ~(BIT1|BIT2);
-    P4->DIR = BIT1;
+    P6->SEL0 &= ~(BIT4|BIT5);
+    P6->SEL1 &= ~(BIT4|BIT5);
+    P6->DIR = BIT4;
     TIMER32_1->LOAD = 24000000;
     TIMER32_1->CONTROL = 0xC2;
 }
 
 uint32_t getDistance() {
     uint32_t highTime, lowTime;
-    P4->OUT |= BIT1;
+    P6->OUT |= BIT4;
     __delay_cycles(3000); // delay cycles for TTL
-    P4->OUT &= ~BIT1;
+    P6->OUT &= ~BIT4;
 
-    while ((P4->IN & BIT2) == 0); // while still input low
+    while ((P6->IN & BIT5) == 0); // while still input low
     // now is high
     highTime = TIMER32_1->VALUE;
-    while ((P4->IN & BIT2) == BIT2); // while still input high
+    while ((P6->IN & BIT5) == BIT5); // while still input high
     //now is low
     lowTime = TIMER32_1->VALUE;
 
@@ -154,69 +150,75 @@ uint32_t getDistance() {
 
 void main(void){
 
-    char index;
-
-    LCD_Keypad_init();
-
-    LCD_ammo_prompt();
-
-    int startGun = 0;
-    int ammoCountNums = 0;
-    char ammoCountString[2];
-    int ammoCountInt = 0;
-
-    while(startGun == 0){
-        index = get_pin();
-        if(index > 0){
-            index = index;
-            if(index == 12){
-                startGun = 1;
-            }
-            else if(ammoCountNums< 2){
-                Write_char_LCD(index + ASCII_OFFSET);
-                delay_ms(200, FREQ_24MHz);
-                ammoCountString[ammoCountNums] = index + ASCII_OFFSET;
-                ammoCountNums++;
-            }
-        }
-    }
-
-    Clear_LCD();
-    Home_LCD();
-
-    char* string2 = "ammo count:";
-    Write_string_LCD(string2);
-    Write_string_LCD(ammoCountString);
-
-    int i;
-    for(i = 0; i < 2; i++){
-        if(ammoCountNums == 1){
-            if(i == 0){
-                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET);
-            }
-        }
-        else{
-            if(i == 0){
-                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET)  * 10;
-            }
-            else{
-                ammoCountInt += (ammoCountString[i]- ASCII_OFFSET);
-            }
-        }
-    }
-
-//    ammoCountInt = convert_ammo_string_to_int(ammoCountString, ammoCountNums);
-
-
-
-    while(1){
-        ammoCountInt = ammoCountInt;
-    }
-
     turret_init();
     uart_init();
     sensor_init();
+    LCD_Keypad_init();
+    motor_off();
+
+    P2->SEL0 &= ~BIT0;
+    P2->SEL1 &= ~BIT0;
+    P2->DIR |= BIT0;
+    P2->OUT &= ~BIT0;
+
     uint32_t distanceCms;
+
+    Clear_LCD();
+    Home_LCD();
+    LCD_ammo_prompt();
+
+    ammoCount = 0;
+    ammoCount = reload_turret();
+
+    int rotateCount = 0;
+    char direction = 1; //0 = left, 1 = right
+    int start = MAXRIGHT;
+    char index;
+    char motorOnFlag = 0;
+//    motor_off();
+    motor_on();
+    while(1){
+            if(ammoCount > 0){
+                distanceCms = getDistance();
+                set_cursor(1,1);
+                erase_line();
+                print_string("centimeters: ");
+                print_int32(distanceCms);
+
+                if(distanceCms < 25){
+                    P2->OUT |= BIT0;
+                    pull_trigger();
+                    ammoCount--;
+                    LCD_display_ammo_count(ammoCount);
+                }
+                else{
+                    P2->OUT &= ~BIT0;
+
+                    //switch direction
+                    if(rotateCount == DEGREES180){
+                        rotateCount = 0;
+                        direction ^= 1;
+                    }
+                    //rotate 180 degrees
+                    else{
+                        if(direction == 0){
+                            start -= TENDEGREES;
+                        }
+                        else{
+                            start += TENDEGREES;
+                        }
+                        TIMER_A0->CCR[3] = start;
+                    }
+                    rotateCount++;
+                }
+            }
+            else{
+                motor_off();
+                ammoCount = reload_turret();
+                motor_on();
+            }
+    }
+
 
     /************************************testing***********************************************/
 
@@ -230,22 +232,22 @@ void main(void){
 
 //    motor_on();
 
-    int count = 0;
-    char direction = 0; //0 = left, 1 = right
-    int start = MAXLEFT;
-
-    int cycles = 0;
-    int iterations = 0;
-
-	while(iterations != 1){
-	    //distance detection
-	     distanceCms = getDistance();
-
-	     set_cursor(1,1);
-	     erase_line();
-
-	     print_string("centimeters: ");
-	     print_int32(distanceCms);
+//    int count = 0;
+//    char direction = 0; //0 = left, 1 = right
+//    int start = MAXLEFT;
+//
+//    int cycles = 0;
+//    int iterations = 0;
+//
+//	while(iterations != 1){
+//	    //distance detection
+//	     distanceCms = getDistance();
+//
+//	     set_cursor(1,1);
+//	     erase_line();
+//
+//	     print_string("centimeters: ");
+//	     print_int32(distanceCms);
 //
 //	     if(distanceCms < 25){//
 //	         while(distanceCms < 50){
@@ -278,7 +280,7 @@ void main(void){
 //            count ++;
 //    //	    delay_ms(100, FREQ_24MHz);//controls how fast the servo rotates
 //	     }
-	}
+//	}
 
 //	motor_off();
 

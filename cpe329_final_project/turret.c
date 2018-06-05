@@ -1,6 +1,7 @@
 #include "msp.h"
 #include "delay.h"
 #include "turret.h"
+#define ASCII_OFFSET 48
 
 void pull_trigger(){
      TIMER_A0->CCR[1] = MAXLEFT; //pull trigger
@@ -62,6 +63,112 @@ void turret_init(){
 
         TIMER_A0->CCR[1] = MAXRIGHT; //duty cycle, start right
         TIMER_A0->CCR[2] = SERVOCENTER; //duty cycle, start center
-        TIMER_A0->CCR[3] = MAXLEFT; //duty cycle, start left
+        TIMER_A0->CCR[3] = MAXRIGHT; //duty cycle, start left
+//        delay_ms(1000, FREQ_24MHz);
+//        TIMER_A0->CCR[3] = MAXRIGHT; //duty cycle, start left
+//        delay_ms(1000, FREQ_24MHz);
+//        TIMER_A0->CCR[3] = MAXLEFT; //duty cycle, start left
+
 }
+
+void LCD_Keypad_init(){
+    LCD_INIT();//initializes the LCD screen
+    LCD_CMD(0x80); //sets LCD to output to top row of screen
+
+    /*initializes P4.0-P4.6 to general purpose I/O*/
+    P4->SEL0 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4|BIT5|BIT6);
+    P4->SEL1 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4|BIT5|BIT6);
+
+    P4->DIR = 0x78; //make P4.3-P4.6 outputs, rest are inputs
+    P4->REN = 0x07; //make P4.0-P4.2 resistors enabled
+    P4->OUT = 0x07; //make P4.0-P4.2 resistors set as pull-up
+
+    delay_ms(1,FREQ_24MHz);
+}
+
+void LCD_ammo_prompt(){
+    char* string1 = "enter capacity";
+    Write_string_LCD(string1);
+}
+
+int convert_ammo_string_to_int(char* ammoCountString, int ammoCountNums){
+    int i;
+    int ammoCountInt = 0;
+    for(i = 0; i < 2; i++){
+        if(ammoCountNums == 1){
+            if(i == 0){
+                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET);
+            }
+        }
+        else{
+            if(i == 0){
+                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET)  * 10;
+            }
+            else{
+                ammoCountInt += (ammoCountString[i]- ASCII_OFFSET);
+            }
+        }
+    }
+    return ammoCountInt;
+}
+
+int reload_turret(){
+
+    Clear_LCD();
+    Home_LCD();
+    LCD_ammo_prompt();
+    LCD_CMD(0xC0);
+
+    char index;
+    int startGun = 0;
+    int ammoCountNums = 0;
+    char ammoCountString[2];
+    int ammoCountInt = 0;
+
+    while(startGun == 0){
+        index = get_pin();
+        if(index > 0){
+            if(index == 12){
+                startGun = 1;
+            }
+            else if(index < 10 || index == 11){
+                if(ammoCountNums< 2){
+                    Write_char_LCD(index + ASCII_OFFSET);
+                    delay_ms(200, FREQ_24MHz);
+                    if(index == 11){
+                        index = 0;
+                    }
+                    ammoCountString[ammoCountNums] = index + ASCII_OFFSET;
+                    ammoCountNums++;
+                }
+            }
+        }
+    }
+
+    Clear_LCD();
+    Home_LCD();
+
+    char* string2 = "ammo count:";
+    Write_string_LCD(string2);
+    Write_string_LCD(ammoCountString);
+
+    ammoCountInt = convert_ammo_string_to_int(ammoCountString, ammoCountNums);
+
+    return ammoCountInt;
+}
+
+void LCD_display_ammo_count(int ammoCount){
+    Clear_LCD();
+    Home_LCD();
+    char* string2 = "ammo count:";
+    Write_string_LCD(string2);
+    int tens = 0;
+    if(ammoCount > 9){
+        tens = ammoCount/10;
+        Write_char_LCD(tens+ASCII_OFFSET);
+    }
+    ammoCount -= (tens*10);
+    Write_char_LCD(ammoCount+ASCII_OFFSET);
+}
+
 
