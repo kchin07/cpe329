@@ -1,7 +1,6 @@
 #include "msp.h"
 #include "delay.h"
 #include "LCD.h"
-#include "keypad.h"
 
 char get_pin() {//function to identify which pin is being pressed on the keypad
     int row_select = BIT3;

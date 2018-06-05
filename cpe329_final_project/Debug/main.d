@@ -19,6 +19,7 @@ main.obj: /Applications/ti/ccsv8/ccs_base/arm/include/system_msp432p401r.h
 main.obj: ../delay.h
 main.obj: ../turret.h
 main.obj: ../LCD.h
+main.obj: ../keypad.h
 
 ../main.c: 
 /Applications/ti/ccsv8/ccs_base/arm/include/msp.h: 
@@ -39,3 +40,4 @@ main.obj: ../LCD.h
 ../delay.h: 
 ../turret.h: 
 ../LCD.h: 
+../keypad.h: 

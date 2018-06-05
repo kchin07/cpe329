@@ -18,7 +18,6 @@ keypad.obj: /Applications/ti/ccsv8/ccs_base/arm/include/CMSIS/cmsis_ccs.h
 keypad.obj: /Applications/ti/ccsv8/ccs_base/arm/include/system_msp432p401r.h
 keypad.obj: ../delay.h
 keypad.obj: ../LCD.h
-keypad.obj: ../keypad.h
 
 ../keypad.c: 
 /Applications/ti/ccsv8/ccs_base/arm/include/msp.h: 
@@ -38,4 +37,3 @@ keypad.obj: ../keypad.h
 /Applications/ti/ccsv8/ccs_base/arm/include/system_msp432p401r.h: 
 ../delay.h: 
 ../LCD.h: 
-../keypad.h: 

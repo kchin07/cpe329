@@ -1,41 +1,14 @@
 #include "msp.h"
 #include "delay.h"
 #include "turret.h"
-#define ASCII_OFFSET 48
-
-void pull_trigger(){
-     TIMER_A0->CCR[1] = MAXLEFT; //pull trigger
-
-     delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
-
-     TIMER_A0->CCR[1] = MAXRIGHT; //release trigger
-
-     delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
-}
-
-void motor_on(){
-    delay_ms(1000, FREQ_24MHz);
-
-    TIMER_A0->CCR[2] = SERVOCENTER + FOURTYDEGREES; //activate gun motor
-
-    delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
-}
-
-void motor_off(){
-    delay_ms(1000, FREQ_24MHz);
-
-    TIMER_A0->CCR[2] = SERVOCENTER; //activate gun motor
-
-    delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
-}
 
 void turret_init(){
     WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
 
         CS->KEY = CS_KEY_VAL; //unlocked, now can modify clock system
         CS->CTL0 = 0; //reset clock tuning
-        CS->CTL0 = CS_CTL0_DCORSEL_4;//set the frequency to 1.5MHz, CS_CTL0_DCORSEL_4 for 24 MHz, CS_CTL0_DCORSEL_0 for 1.5MHz
-        CS->CTL1 |= CS_CTL1_DIVS_5; //div clk by 2, CS_CTL1_DIVS_5 to div by 32, CS_CTL1_DIVS_1 to div by 2
+        CS->CTL0 = CS_CTL0_DCORSEL_4;//set the frequency to 1.5MHz
+        CS->CTL1 |= CS_CTL1_DIVS_5; //div clk by 2
         CS->KEY = 0; //lock clock system
 
         //set P2.4 to PWM for TimerA
@@ -64,52 +37,32 @@ void turret_init(){
         TIMER_A0->CCR[1] = MAXRIGHT; //duty cycle, start right
         TIMER_A0->CCR[2] = SERVOCENTER; //duty cycle, start center
         TIMER_A0->CCR[3] = MAXRIGHT; //duty cycle, start left
-//        delay_ms(1000, FREQ_24MHz);
-//        TIMER_A0->CCR[3] = MAXRIGHT; //duty cycle, start left
-//        delay_ms(1000, FREQ_24MHz);
-//        TIMER_A0->CCR[3] = MAXLEFT; //duty cycle, start left
-
 }
 
-void LCD_Keypad_init(){
-    LCD_INIT();//initializes the LCD screen
-    LCD_CMD(0x80); //sets LCD to output to top row of screen
+void pull_trigger(){
+     TIMER_A0->CCR[1] = MAXLEFT; //rotate servo to pull trigger
 
-    /*initializes P4.0-P4.6 to general purpose I/O*/
-    P4->SEL0 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4|BIT5|BIT6);
-    P4->SEL1 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4|BIT5|BIT6);
+     delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
 
-    P4->DIR = 0x78; //make P4.3-P4.6 outputs, rest are inputs
-    P4->REN = 0x07; //make P4.0-P4.2 resistors enabled
-    P4->OUT = 0x07; //make P4.0-P4.2 resistors set as pull-up
+     TIMER_A0->CCR[1] = MAXRIGHT; //rotate servo to release trigger
 
-    delay_ms(1,FREQ_24MHz);
+     delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
 }
 
-void LCD_ammo_prompt(){
-    char* string1 = "enter capacity";
-    Write_string_LCD(string1);
+void motor_on(){
+    delay_ms(1000, FREQ_24MHz);
+
+    TIMER_A0->CCR[2] = SERVOCENTER + FOURTYDEGREES; //rotate servo to activate gun motor
+
+    delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
 }
 
-int convert_ammo_string_to_int(char* ammoCountString, int ammoCountNums){
-    int i;
-    int ammoCountInt = 0;
-    for(i = 0; i < 2; i++){
-        if(ammoCountNums == 1){
-            if(i == 0){
-                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET);
-            }
-        }
-        else{
-            if(i == 0){
-                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET)  * 10;
-            }
-            else{
-                ammoCountInt += (ammoCountString[i]- ASCII_OFFSET);
-            }
-        }
-    }
-    return ammoCountInt;
+void motor_off(){
+    delay_ms(1000, FREQ_24MHz);
+
+    TIMER_A0->CCR[2] = SERVOCENTER; //rotate servo to deactivate gun motor
+
+    delay_ms(1000, FREQ_24MHz);//wait for servo to rotate
 }
 
 int reload_turret(){
@@ -157,6 +110,47 @@ int reload_turret(){
     return ammoCountInt;
 }
 
+void LCD_Keypad_init(){
+    LCD_INIT();//initializes the LCD screen
+    LCD_CMD(0x80); //sets LCD to output to top row of screen
+
+    /*initializes P4.0-P4.6 to general purpose I/O*/
+    P4->SEL0 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4|BIT5|BIT6);
+    P4->SEL1 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4|BIT5|BIT6);
+
+    P4->DIR = 0x78; //make P4.3-P4.6 outputs, rest are inputs
+    P4->REN = 0x07; //make P4.0-P4.2 resistors enabled
+    P4->OUT = 0x07; //make P4.0-P4.2 resistors set as pull-up
+
+    delay_ms(1,FREQ_24MHz);
+}
+
+void LCD_ammo_prompt(){
+    char* string1 = "enter capacity";
+    Write_string_LCD(string1);
+}
+
+int convert_ammo_string_to_int(char* ammoCountString, int ammoCountNums){
+    int i;
+    int ammoCountInt = 0;
+    for(i = 0; i < 2; i++){
+        if(ammoCountNums == 1){
+            if(i == 0){
+                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET);
+            }
+        }
+        else{
+            if(i == 0){
+                ammoCountInt += (ammoCountString[i] - ASCII_OFFSET)  * 10;
+            }
+            else{
+                ammoCountInt += (ammoCountString[i]- ASCII_OFFSET);
+            }
+        }
+    }
+    return ammoCountInt;
+}
+
 void LCD_display_ammo_count(int ammoCount){
     Clear_LCD();
     Home_LCD();
@@ -171,4 +165,30 @@ void LCD_display_ammo_count(int ammoCount){
     Write_char_LCD(ammoCount+ASCII_OFFSET);
 }
 
+void sensor_init() {
+    P6->SEL0 &= ~(BIT4|BIT5);
+    P6->SEL1 &= ~(BIT4|BIT5);
+    P6->DIR = BIT4;
+    TIMER32_1->LOAD = 24000000;
+    TIMER32_1->CONTROL = 0xC2;
+}
+
+uint32_t getDistance() {
+    uint32_t highTime, lowTime;
+    P6->OUT |= BIT4;
+    __delay_cycles(3000); // delay cycles for TTL
+    P6->OUT &= ~BIT4;
+
+    while ((P6->IN & BIT5) == 0); // while still input low
+    // now is high
+    highTime = TIMER32_1->VALUE;
+    while ((P6->IN & BIT5) == BIT5); // while still input high
+    //now is low
+    lowTime = TIMER32_1->VALUE;
+
+    while ((TIMER32_1->RIS & 1) == 0);
+    TIMER32_1->INTCLR = 0;
+
+    return (highTime - lowTime) / (24 * 58);
+}
 

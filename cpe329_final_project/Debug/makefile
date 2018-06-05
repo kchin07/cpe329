@@ -8,6 +8,7 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
+"./LCD.obj" \
 "./delay.obj" \
 "./keypad.obj" \
 "./main.obj" \
@@ -157,8 +158,8 @@ cpe329_final_project.hex: $(EXE_OUTPUTS)
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "delay.obj" "keypad.obj" "main.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" "turret.obj" 
-	-$(RM) "delay.d" "keypad.d" "main.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" "turret.d" 
+	-$(RM) "LCD.obj" "delay.obj" "keypad.obj" "main.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" "turret.obj" 
+	-$(RM) "LCD.d" "delay.d" "keypad.d" "main.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" "turret.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

@@ -7,6 +7,7 @@ CMD_SRCS += \
 ../msp432p401r.cmd 
 
 C_SRCS += \
+../LCD.c \
 ../delay.c \
 ../keypad.c \
 ../main.c \
@@ -15,6 +16,7 @@ C_SRCS += \
 ../turret.c 
 
 C_DEPS += \
+./LCD.d \
 ./delay.d \
 ./keypad.d \
 ./main.d \
@@ -23,6 +25,7 @@ C_DEPS += \
 ./turret.d 
 
 OBJS += \
+./LCD.obj \
 ./delay.obj \
 ./keypad.obj \
 ./main.obj \
@@ -31,6 +34,7 @@ OBJS += \
 ./turret.obj 
 
 OBJS__QUOTED += \
+"LCD.obj" \
 "delay.obj" \
 "keypad.obj" \
 "main.obj" \
@@ -39,6 +43,7 @@ OBJS__QUOTED += \
 "turret.obj" 
 
 C_DEPS__QUOTED += \
+"LCD.d" \
 "delay.d" \
 "keypad.d" \
 "main.d" \
@@ -47,6 +52,7 @@ C_DEPS__QUOTED += \
 "turret.d" 
 
 C_SRCS__QUOTED += \
+"../LCD.c" \
 "../delay.c" \
 "../keypad.c" \
 "../main.c" \
